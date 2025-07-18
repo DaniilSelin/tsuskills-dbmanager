@@ -1,0 +1,47 @@
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "ru_analyzer": {
+          "type": "russian",
+          "stopwords": "_russian_"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id":              { "type": "keyword" },
+      "employer_url":    { "type": "keyword" },
+      "title": {
+        "type":     "text",
+        "analyzer": "ru_analyzer",
+        "fields": {
+          "keyword": { "type": "keyword" }
+        }
+      },
+      "activity_type": {
+        "type":     "text",
+        "analyzer": "ru_analyzer",
+        "fields": {
+          "keyword": { "type": "keyword" }
+        }
+      },
+      "employment_type":  { "type": "keyword" },
+      "work_schedule":    { "type": "keyword" },
+      "is_verified":      { "type": "boolean" },
+      "skills":           { "type": "keyword" },
+      "compensation_type":{ "type": "keyword" },
+      "compensation_min": { "type": "double" },
+      "compensation_max": { "type": "double" },
+      "description": {
+        "type":     "text",
+        "analyzer": "ru_analyzer"
+      },
+      "created_at": {
+        "type":   "date",
+        "format": "strict_date_time||epoch_millis"
+      }
+    }
+  }
+}
