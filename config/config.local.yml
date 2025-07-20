@@ -1,5 +1,3 @@
 opensearch:
   addresses:
     - "http://localhost:9200"
-  username: "admin"
-  password: "Secure@Pass123"
