@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  postgres-vacancies:
+    image: postgres:16-alpine
+    container_name: postgres-vacancies
+    environment:
+      POSTGRES_DB: tsuskills_vacancies
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg-vacancies-data:/var/lib/postgresql/data
+    networks:
+      - tsuskills-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  opensearch:
+    image: opensearchproject/opensearch:2.14.0
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - tsuskills-net
+
+  dbmanager-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: dbmanager-service
+    environment:
+      CONFIG_FILE_PATH: config/config.docker.yaml
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-vacancies:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
+    networks:
+      - tsuskills-net
+
+volumes:
+  pg-vacancies-data:
+  opensearch-data:
+
+networks:
+  tsuskills-net:
+    driver: bridge
