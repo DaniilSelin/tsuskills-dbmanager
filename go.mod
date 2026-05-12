@@ -9,8 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/opensearch-project/opensearch-go v1.1.0
-	github.com/spf13/viper v1.20.1
+	github.com/opensearch-project/opensearch-go v1.1.0	"github.com/segmentio/kafka-go" v0.5.0	github.com/spf13/viper v1.20.1
 	go.uber.org/zap v1.27.0
 )
 

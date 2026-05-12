@@ -13,6 +13,7 @@ import (
 	router "tsuskills-dbmanager/internal/delivery/http"
 	"tsuskills-dbmanager/internal/delivery/http/handler"
 	"tsuskills-dbmanager/internal/domain"
+	"tsuskills-dbmanager/internal/infra/kafka"
 	"tsuskills-dbmanager/internal/infra/opensearch"
 	"tsuskills-dbmanager/internal/infra/postgres"
 	"tsuskills-dbmanager/internal/logger"
@@ -70,6 +71,19 @@ func main() {
 		appLogger.Info(ctx, "Connected to OpenSearch")
 	}
 
+	// Kafka producer
+	kafkaProducer, err := kafka.NewPublisher(kafka.Config{
+		Brokers:      cfg.Kafka.Brokers,
+		Topic:        cfg.Kafka.Topic,
+		ClientID:     cfg.Kafka.ClientID,
+		DialTimeout:  cfg.Kafka.DialTimeout,
+		WriteTimeout: cfg.Kafka.WriteTimeout,
+	})
+	if err != nil {
+		appLogger.Fatal(ctx, fmt.Sprintf("Failed to initialize Kafka producer: %v", err))
+	}
+	defer kafkaProducer.Close()
+
 	// Dependencies
 	vacancyRepo := repository.NewVacancyRepository(pool)
 
@@ -86,7 +100,7 @@ func main() {
 		searchImpl = &noopSearch{}
 	}
 
-	vacancyService := service.NewVacancyService(vacancyRepo, searchImpl, appLogger)
+	vacancyService := service.NewVacancyService(vacancyRepo, searchImpl, kafkaProducer, appLogger)
 	h := handler.NewHandler(vacancyService, appLogger)
 	r := router.NewRouter(h, appLogger)
 

@@ -73,10 +73,19 @@ type LoggerConfig struct {
 	Logger zap.Config `mapstructure:"logger"`
 }
 
+type KafkaConfig struct {
+	Brokers      []string      `mapstructure:"Brokers"`
+	Topic        string        `mapstructure:"Topic"`
+	ClientID     string        `mapstructure:"ClientID"`
+	DialTimeout  time.Duration `mapstructure:"DialTimeout"`
+	WriteTimeout time.Duration `mapstructure:"WriteTimeout"`
+}
+
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Search   SearchConfig   `mapstructure:"opensearch"`
 	Postgres PostgresConfig `mapstructure:"postgres"`
+	Kafka    KafkaConfig    `mapstructure:"kafka"`
 	Logger   LoggerConfig   `mapstructure:"logger"`
 }
 

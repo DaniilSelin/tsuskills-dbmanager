@@ -26,6 +26,14 @@ opensearch:
     addresses:
       - "http://localhost:9200"
 
+kafka:
+  Brokers:
+    - "localhost:9092"
+  Topic: "tsu.events"
+  ClientID: "dbmanager"
+  DialTimeout: 5s
+  WriteTimeout: 1s
+
 server:
   host: 0.0.0.0
   port: 8080

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"tsuskills-dbmanager/internal/domain"
+	"tsuskills-dbmanager/internal/infra/kafka"
 	"tsuskills-dbmanager/internal/logger"
 
 	"github.com/google/uuid"
@@ -13,13 +14,14 @@ import (
 )
 
 type VacancyService struct {
-	repo   IVacancyRepository
-	search IVacancySearch
-	log    logger.Logger
+	repo      IVacancyRepository
+	search    IVacancySearch
+	publisher kafka.Publisher
+	log       logger.Logger
 }
 
-func NewVacancyService(repo IVacancyRepository, search IVacancySearch, log logger.Logger) *VacancyService {
-	return &VacancyService{repo: repo, search: search, log: log}
+func NewVacancyService(repo IVacancyRepository, search IVacancySearch, publisher kafka.Publisher, log logger.Logger) *VacancyService {
+	return &VacancyService{repo: repo, search: search, publisher: publisher, log: log}
 }
 
 func (s *VacancyService) CreateVacancy(ctx context.Context, v *domain.Vacancy) (uuid.UUID, domain.ErrorCode) {
@@ -32,6 +34,10 @@ func (s *VacancyService) CreateVacancy(ctx context.Context, v *domain.Vacancy) (
 	if err != nil {
 		s.log.Error(ctx, "CreateVacancy: repo", zap.Error(err))
 		return uuid.Nil, domain.CodeInternal
+	}
+
+	if err := s.publishVacancyEvent(ctx, kafka.EventVacancyCreated, v, id); err != nil {
+		s.log.Warn(ctx, "CreateVacancy: publish vacancy event failed", zap.Error(err))
 	}
 
 	// async-safe: если OpenSearch недоступен, вакансия всё равно сохранена в PG
@@ -66,6 +72,10 @@ func (s *VacancyService) UpdateVacancy(ctx context.Context, v *domain.Vacancy) d
 		return domain.CodeInternal
 	}
 
+	if err := s.publishVacancyEvent(ctx, kafka.EventVacancyUpdated, v, v.ID); err != nil {
+		s.log.Warn(ctx, "UpdateVacancy: publish vacancy event failed", zap.Error(err))
+	}
+
 	// переиндексируем — для этого получим полную запись из PG
 	full, err := s.repo.GetByID(ctx, v.ID)
 	if err == nil {
@@ -85,6 +95,10 @@ func (s *VacancyService) DeleteVacancy(ctx context.Context, id uuid.UUID) domain
 		}
 		s.log.Error(ctx, "DeleteVacancy: repo", zap.Error(err))
 		return domain.CodeInternal
+	}
+
+	if err := s.publishVacancyEvent(ctx, kafka.EventVacancyDeleted, map[string]string{"id": id.String()}, id); err != nil {
+		s.log.Warn(ctx, "DeleteVacancy: publish vacancy event failed", zap.Error(err))
 	}
 
 	if err := s.search.DeleteVacancy(ctx, id); err != nil {
@@ -156,4 +170,17 @@ func (s *VacancyService) SearchVacancies(ctx context.Context, params domain.Vaca
 	}
 
 	return vacancies, total, domain.CodeOK
+}
+
+func (s *VacancyService) publishVacancyEvent(ctx context.Context, eventType string, payload interface{}, id uuid.UUID) error {
+	if s.publisher == nil {
+		return nil
+	}
+
+	event, err := kafka.NewEvent(eventType, kafka.EntityVacancy, id.String(), payload)
+	if err != nil {
+		return err
+	}
+
+	return s.publisher.Publish(ctx, event)
 }
